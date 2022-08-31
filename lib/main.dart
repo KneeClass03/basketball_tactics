@@ -44,8 +44,13 @@ class Player extends StatelessWidget {
   Widget build(BuildContext context) {
     return Draggable<int>(
       data: 10,
-      feedback: Center(
-          child: Container(height: 100.0, width: 100.0, color: Colors.green)),
+      dragAnchorStrategy: ((draggable, context, position) =>
+          Offset(50.0, 50.0)),
+      feedback: Container(
+        height: 100.0,
+        width: 100.0,
+        color: Colors.green,
+      ),
       child: Container(
         height: 25.0,
         padding: const EdgeInsets.all(5.0),
