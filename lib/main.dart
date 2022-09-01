@@ -15,7 +15,9 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: Scaffold(body: AttackingTeam()),
+      home: Scaffold(
+        body: AttackingTeam(),
+      ),
     );
   }
 }
@@ -26,12 +28,13 @@ class AttackingTeam extends StatelessWidget {
   AttackingTeam({super.key}) {
     // lock the size of the team to 5 players
     players = List<Attacker>.generate(
-        5,
-        (index) => Attacker(
-              team: this,
-              id: index,
-            ),
-        growable: false);
+      5,
+      (index) => Attacker(
+        team: this,
+        id: index,
+      ),
+      growable: false,
+    );
   }
 
   late final List<Attacker> players;
@@ -41,7 +44,9 @@ class AttackingTeam extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: players);
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: players,
+    );
   }
 
   /// Iterates through each player and checks if any of them are selected
@@ -74,7 +79,7 @@ class Attacker extends StatefulWidget {
   State<Attacker> createState() => AttackerState();
 }
 
-/// This class manages the mutable state of an attacker, so far only concering
+/// This class manages the mutable state of an attacker, so far only concerning
 /// selection.
 /// IDEA: So far the concept was to select the player with a tap, then send him
 /// to a location with the second tap. Tapping might be a better fit for passing the ball,
@@ -92,23 +97,31 @@ class AttackerState extends State<Attacker> {
         Container(
           height: 50.0,
           decoration: ShapeDecoration(
-              shape: const CircleBorder(),
-              color: _selected ? Colors.black26 : Colors.transparent),
+            shape: const CircleBorder(),
+            color: _selected ? Colors.black26 : Colors.transparent,
+          ),
         ),
         Container(
           height: 25.0,
           decoration: const ShapeDecoration(
-              shape: CircleBorder(), color: Color.fromARGB(255, 75, 75, 75)),
+            shape: CircleBorder(),
+            color: Color.fromARGB(255, 75, 75, 75),
+          ),
         ),
         Container(
           height: 15.0,
           decoration: const ShapeDecoration(
-              shape: CircleBorder(), color: Colors.black87),
+            shape: CircleBorder(),
+            color: Colors.black87,
+          ),
         ),
       ],
     );
 
-    return GestureDetector(onTap: _toggleSelect, child: stack);
+    return GestureDetector(
+      onTap: _toggleSelect,
+      child: stack,
+    );
   }
 
   /// Adds the state to the teams list for processing reasons (probably bad design)
