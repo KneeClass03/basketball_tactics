@@ -1,5 +1,25 @@
 import 'package:flutter/material.dart';
 
+typedef PlayerSelectedCallback = Function(int id, bool hasBall);
+
+abstract class TwoPlayersSelectedNotification extends Notification {
+  const TwoPlayersSelectedNotification({
+    required this.initiatorId,
+    required this.receiverId,
+  });
+
+  final int initiatorId;
+  final int receiverId;
+}
+
+class PassNotification extends TwoPlayersSelectedNotification {
+  PassNotification({required super.initiatorId, required super.receiverId});
+}
+
+class ScreenNotification extends TwoPlayersSelectedNotification {
+  ScreenNotification({required super.initiatorId, required super.receiverId});
+}
+
 void main() {
   runApp(const MyApp());
 }
@@ -22,45 +42,65 @@ class MyApp extends StatelessWidget {
   }
 }
 
-/// This class manages everything concerning the attacking team.
-/// TODO: implement interface TEAM because DefendingTeam needs to be implemented as well
-class AttackingTeam extends StatelessWidget {
-  AttackingTeam({super.key}) {
-    // lock the size of the team to 5 players
-    players = List<Attacker>.generate(
+class AttackingTeam extends StatefulWidget {
+  AttackingTeam({super.key});
+
+  final List<Attacker> players = <Attacker>[];
+  // a list of each player's mutable state; needed for calculations (probably bad design)
+  // final List<AttackerState> playerStates = <AttackerState>[];
+
+  @override
+  State<AttackingTeam> createState() => _AttackingTeamState();
+}
+
+class _AttackingTeamState extends State<AttackingTeam> {
+  List<int> playersInActionInvolved = <int>[];
+  bool ballInActionInvolved = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.players.addAll(List<Attacker>.generate(
       5,
       (index) => Attacker(
-        team: this,
+        team: widget,
         id: index,
+        onPlayerSelected: registerSelectedPlayer,
+        startsWithBall: index == 2,
       ),
       growable: false,
-    );
+    ));
   }
-
-  late final List<Attacker> players;
-  // a list of each player's mutable state; needed for calculations (probably bad design)
-  final List<AttackerState> playerStates = <AttackerState>[];
 
   @override
   Widget build(BuildContext context) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: players,
+      children: widget.players,
     );
   }
 
-  /// Iterates through each player and checks if any of them are selected
-  bool otherPlayerSelected(int id) {
-    for (int i = 0; i < players.length; i++) {
-      if (playerStates[i].selected) {
-        return true;
-      }
-    }
-    return false;
-  }
+  void registerSelectedPlayer(int id, bool hasBall) {
+    ballInActionInvolved = !(ballInActionInvolved || hasBall);
+    playersInActionInvolved.add(id);
 
-  void addState(AttackerState state) {
-    playerStates.add(state);
+    if (playersInActionInvolved.length >= 2) {
+      if (ballInActionInvolved) {
+        print('pass');
+        /* PassNotification(
+          initiatorId: playersInActionInvolved[0],
+          receiverId: playersInActionInvolved[1],
+        ).dispatch(context); */
+      } else {
+        print('screen');
+        /* ScreenNotification(
+          initiatorId: playersInActionInvolved[0],
+          receiverId: playersInActionInvolved[1],
+        ).dispatch(context); */
+      }
+      playersInActionInvolved.clear();
+      ballInActionInvolved = false;
+    }
   }
 }
 
@@ -68,12 +108,19 @@ class AttackingTeam extends StatelessWidget {
 /// selection, movement (TODO), passing (TODO)
 /// TODO: implement interface Player that both Attacker and Defender derive from
 class Attacker extends StatefulWidget {
-  const Attacker({required this.team, required this.id, Key? key})
-      : super(key: key);
+  const Attacker({
+    required this.team,
+    required this.id,
+    required this.onPlayerSelected,
+    required this.startsWithBall,
+    Key? key,
+  }) : super(key: key);
   // unique id (for the team)
   final int id;
   // the team the player is playing for
   final AttackingTeam team;
+  final PlayerSelectedCallback onPlayerSelected;
+  final bool startsWithBall;
 
   @override
   State<Attacker> createState() => AttackerState();
@@ -85,56 +132,81 @@ class Attacker extends StatefulWidget {
 /// to a location with the second tap. Tapping might be a better fit for passing the ball,
 /// while movement can be initiated with a drag gesture.
 class AttackerState extends State<Attacker> {
-  bool _selected = false;
-  bool get selected => _selected;
+  // bool _selected = false;
+  // bool get selected => _selected;
+  bool isBallHandler = false;
 
   @override
   Widget build(BuildContext context) {
-    Stack stack = Stack(
-      alignment: AlignmentDirectional.center,
-      children: [
-        // this bigger circle only shows up when the player is selected
-        Container(
-          height: 50.0,
-          decoration: ShapeDecoration(
-            shape: const CircleBorder(),
-            color: _selected ? Colors.black26 : Colors.transparent,
-          ),
-        ),
-        Container(
-          height: 25.0,
-          decoration: const ShapeDecoration(
-            shape: CircleBorder(),
-            color: Color.fromARGB(255, 75, 75, 75),
-          ),
-        ),
-        Container(
-          height: 15.0,
-          decoration: const ShapeDecoration(
-            shape: CircleBorder(),
-            color: Colors.black87,
-          ),
-        ),
-      ],
-    );
-
     return GestureDetector(
-      onTap: _toggleSelect,
-      child: stack,
+      onTap: handleOnTap,
+      child: Stack(
+        alignment: AlignmentDirectional.center,
+        children: buildChildren(),
+      ),
     );
+  }
+
+  void handleOnTap() {
+    setState(() {
+      widget.onPlayerSelected(widget.id, isBallHandler);
+    });
   }
 
   /// Adds the state to the teams list for processing reasons (probably bad design)
   @override
   void initState() {
     super.initState();
-    widget.team.addState(this);
+    isBallHandler = widget.startsWithBall;
+  }
+
+  List<Widget> buildChildren() {
+    var builder = <Widget>[
+      Container(
+        height: 50.0,
+        decoration: const ShapeDecoration(
+          shape: CircleBorder(),
+          color: Colors.transparent,
+        ),
+      ),
+      Container(
+        height: 25.0,
+        decoration: const ShapeDecoration(
+          shape: CircleBorder(),
+          color: Color.fromARGB(255, 75, 75, 75),
+        ),
+      ),
+      Container(
+        height: 15.0,
+        decoration: const ShapeDecoration(
+          shape: CircleBorder(),
+          color: Colors.black87,
+        ),
+      ),
+    ];
+
+    if (isBallHandler) builder.add(const Basketball());
+
+    return builder;
   }
 
   /// Toggles the _selected variable depending on if other players are already selected.
-  void _toggleSelect() {
+  /* void _toggleSelect() {
     setState(() {
-      _selected = !widget.team.otherPlayerSelected(widget.id);
+      _selected = !_selected;
     });
+  } */
+}
+
+class Basketball extends StatelessWidget {
+  const Basketball({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return const Image(
+      width: 15.0,
+      height: 15.0,
+      image: AssetImage('images/basketball.png'),
+    );
   }
 }
